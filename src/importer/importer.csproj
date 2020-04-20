@@ -6,11 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- TODO : Nuget -->
-    <ProjectReference Include="../../../moneyboard-api/src/dto/dto.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="dto" Version="1.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="3.1.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.1" />
