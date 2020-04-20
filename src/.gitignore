@@ -6,6 +6,7 @@
 appsettings.json
 appsettings.*.json
 nuget.config
+build.sh
 
 # User-specific files
 *.rsuser

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 using System.Net;
 using System.IO;
+using System.Text;
 
 namespace importer
 {
@@ -34,6 +35,41 @@ namespace importer
 
             if(setNullIf404 && response.StatusCode == HttpStatusCode.NotFound)
                 return default(T);
+
+            if(!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning($"{url} => {response.StatusCode}");
+                throw new ApiClientException($"{response.StatusCode} : {await response.Content.ReadAsStringAsync()}");
+            }
+            else
+            {
+                if(_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug($"{url} => {response.StatusCode}");
+                }
+            }
+
+            var streamTask = response.Content.ReadAsStreamAsync();
+            var result = await JsonSerializer.DeserializeAsync<T>(await streamTask, GetOptions()).ConfigureAwait(false);
+
+            if(result == null)
+            {
+                _logger.LogDebug($"Serialization error on content : {await response.Content.ReadAsStringAsync()}");
+                throw new ApiClientException("Serialization error");
+            }
+            else
+                return result;
+        }
+
+        public async Task<T> PostAsync<T, U>(string url, U body) where U : class
+        {
+            return await PostAsync<T>(url, JsonSerializer.Serialize<U>(body), "application/json");            
+        }
+
+        public async Task<T> PostAsync<T>(string url, string jsonBody, string mediaType) 
+        {
+            var content = new StringContent(jsonBody, Encoding.UTF8, mediaType);
+            var response = await _client.PostAsync(url, content);
 
             if(!response.IsSuccessStatusCode)
             {

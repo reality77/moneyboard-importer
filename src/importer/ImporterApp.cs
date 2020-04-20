@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using dto.Model;
 
 namespace importer
 {
@@ -40,6 +41,9 @@ namespace importer
                 return 64;
             }
 
+            _logger.LogDebug($"Using connection {confApi.GetValue<string>("Url")}");
+            _logger.LogDebug($"Listing Files in {sourcePath}");
+
             var dicExistingAccounts = new Dictionary<string, dto.Model.AccountDetails>();
             var client = CreateApiClient();
 
@@ -58,24 +62,46 @@ namespace importer
                     {
                         _logger.LogInformation($"Processing file {fileName}");
 
-                        dto.Model.AccountDetails account = null;
+                        AccountDetails account = null;
 
                         if(!dicExistingAccounts.ContainsKey(accountNo))
                         {
-                            account = await client.GetAsync<dto.Model.AccountDetails>($"accounts/by?number={WebUtility.UrlEncode(accountNo)}");
-                            dicExistingAccounts.Add(accountNo, account);
+                            account = await client.GetAsync<AccountDetails>($"accounts/by?number={WebUtility.UrlEncode(accountNo)}");
+
+                            if(account != null)
+                                dicExistingAccounts.Add(accountNo, account);
                         }
                         else
                             account = dicExistingAccounts[accountNo];
 
+                        if(account == null)
+                        {
+                            _logger.LogDebug($"No account {accountNo} detected - Creating account");
+
+                            if(confApi.GetValue<bool>("AutoCreateAccounts"))
+                            {
+                                account = new AccountDetails
+                                {
+                                    Name = accountNo,
+                                    Number = accountNo,
+                                    InitialBalance = 0,
+                                };
+
+                                account = await client.PostAsync<AccountDetails, AccountDetails>("accounts", account);
+
+                                dicExistingAccounts.Add(accountNo, account);
+                                _logger.LogInformation($"Account #{account.Id} - {account.Number}");
+                            }
+                            else
+                                _logger.LogWarning($"Account {accountNo} does not exists - skipped");
+                        }
+
                         if(account != null)
                         {
+                            _logger.LogDebug($"Importing data in account {account.Id}");
                             var result = await client.PostFileAsync($"import?accountId={account.Id}", file);
                             _logger.LogInformation(result);
                         }
-                        else
-                            _logger.LogWarning($"Account {accountNo} does not exists - skipped");
-
                     }
                 }
                 else

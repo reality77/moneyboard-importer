@@ -21,4 +21,4 @@ COPY --from=build-env /app/out .
 
 RUN mkdir -p /downloads
 
-ENTRYPOINT ["dotnet", "moneyboard-importer.dll"]
+ENTRYPOINT ["dotnet", "importer.dll"]
